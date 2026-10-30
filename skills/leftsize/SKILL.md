@@ -11,11 +11,11 @@ There is no LeftSize API, CLI or MCP server for agents. Everything below is `gh`
 
 ## Read this first — six things that will trip you up
 
-1. **Any `@leftsize` in a comment runs a command.** LeftSize matches the first `@leftsize` anywhere in a comment, in any case, and runs the rest of that line. "cc @leftsize", a quoted earlier command or an email address like `support@leftsize.com` all trigger a reply. When you write a note on a LeftSize issue, write "LeftSize" without the `@`. Only the first command in a comment runs, so post one command per comment.
-2. **`snooze`, `ignore` and `wrong` close the issue immediately.** `ignore` and `wrong` are permanent for that rule and scope: LeftSize will never reopen the issue or open a new one for it, also not for resources that appear there later. Closing the issue with `gh issue close` has the same permanent effect. Confirm with the user before any of these unless they have explicitly told you to go ahead.
+1. **Any `@leftsize` mention in a comment runs a command.** LeftSize matches the first `@leftsize` that stands as a word of its own, anywhere in a comment, in any case, and runs the rest of that line only. "cc @leftsize" or a quoted earlier command trigger a reply; an email address like `support@leftsize.com` doesn't. When you write a note on a LeftSize issue, write "LeftSize" without the `@`. Only the first command in a comment runs, so post one command per comment.
+2. **`snooze`, `ignore` and `wrong` close the issue immediately.** `ignore` and `wrong` stick for that rule and scope: LeftSize won't reopen the issue or open a new one for it, also not for resources that appear there later. Closing the issue with `gh issue close` has the same effect. Only reopening the issue (`gh issue reopen`) undoes it; LeftSize then tracks it again from the next scan. Confirm with the user before any of these unless they have explicitly told you to go ahead.
 3. **Commands must come from a person's account.** Comments from bot accounts (`github-actions[bot]`, any GitHub App) are silently ignored. Run these commands with the user's own `gh auth login`, not from a workflow token.
 4. **Replies are asynchronous.** Posting a command returns immediately; LeftSize's answer appears as a new comment from `leftsize[bot]`, usually within a few seconds. Wait briefly, then read the comments again. Editing a comment does not run it again — post a new one.
-5. **`script` defaults to Azure CLI, also on AWS issues.** Check the `cloud:` label and pass the type explicitly: `@leftsize script aws-cli`.
+5. **`script` without a type gives the CLI of the issue's cloud** (`aws-cli` on AWS, `azure-cli` on Azure). Not every rule has every type: the reply says which types it has and shows the default one.
 6. **LeftSize only reads.** It never changes infrastructure, and commands like `stop`, `delete` or `resize` are refused. Any change to cloud resources is made by you or the user, with the user's approval, through their own tools (az, aws, Terraform).
 
 ## Step 1: Find the findings
@@ -33,7 +33,7 @@ gh issue list --repo {owner}/{repo} --label leftsize --state open --limit 50
 | `leftsize` | on every LeftSize issue |
 | category | `cost-optimization`, `deprecation`, `security`, `governance` |
 | `cloud:` | `aws`, `azure` (GitHub matches labels case-insensitively) |
-| `severity:` | `critical`, `high`, `medium`, `low`, `info` |
+| `severity:` | `critical`, `high`, `medium`, `low` |
 | `rule:` | the rule id, e.g. `rule:leftsize-unattached-disk` |
 | `resource-type:` | e.g. `resource-type:disk`, `resource-type:lambda` |
 
@@ -51,7 +51,7 @@ gh issue list --repo {owner}/{repo} --label leftsize --label severity:high
 gh issue list --repo {owner}/{repo} --label rule:leftsize-unattached-disk --state all
 ```
 
-Titles start with a category prefix such as `[COST]`, `[DEPRECATION]`, `[SECURITY]` or `[PRICE CHANGE]`, and cost titles end with the estimated savings, e.g. `[COST] 3 unattached disks (≈ $42/mo)`. To rank cost findings by savings, list titles as JSON and parse the `≈ $…/mo` part:
+Titles start with a category prefix such as `[COST]`, `[DEPRECATION]`, `[SECURITY]` or `[PRICE CHANGE]`, and most cost titles end with the estimated savings, e.g. `[COST] 3 unattached disks (≈ $42/mo)` (monthly list prices in USD). Some cost rules show the amount only in the body and some have no price, so don't treat a title without an amount as zero savings. To rank cost findings by savings, list titles as JSON and parse the `≈ $…/mo` part:
 
 ```bash
 gh issue list --repo {owner}/{repo} --label leftsize --label cost-optimization \
@@ -77,7 +77,7 @@ One issue groups every resource that matches one rule in one **scope**: an Azure
 - **Available Actions** — the `@leftsize` commands that apply to this rule
 - **Quick Fix** — example CLI commands
 
-Each scan rewrites the body with the current resources and counts, without posting a comment, so the body is always the latest state. The comments hold the conversation: earlier command replies from `leftsize[bot]` and what the team said.
+While the issue is open, each scan that still finds the problem rewrites the body with the current resources and counts, without posting a comment. When the problem is gone, the body keeps the last list: LeftSize doesn't close issues or mark them resolved by itself. The comments hold the conversation: earlier command replies from `leftsize[bot]` and what the team said.
 
 ## Step 3: Ask LeftSize for more
 
@@ -95,9 +95,9 @@ gh issue view {n} --repo {owner}/{repo} --comments
 | `@leftsize howto` | Step-by-step fix (alias `how-to`) |
 | `@leftsize impact` | Cost, performance or security impact |
 | `@leftsize alternatives` | Other ways to address it (alias `options`) |
-| `@leftsize script <type>` | Remediation script: `aws-cli`, `azure-cli` (default), `powershell`, `terraform` |
+| `@leftsize script [type]` | Remediation script: `aws-cli`, `azure-cli`, `powershell`, `terraform` (default: the CLI of the issue's cloud) |
 | `@leftsize prompt` | A ready-made prompt with the finding's context |
-| `@leftsize` | The list of commands |
+| `@leftsize help` | The list of commands (also `@leftsize` on its own) |
 
 These change nothing; they only add a comment. Before asking, check whether the answer is already in the comments — someone may have asked before.
 
@@ -106,8 +106,8 @@ These change nothing; they only add a comment. Before asking, check whether the 
 | Command | Effect |
 |---|---|
 | `@leftsize snooze <duration>` | Closes the issue as completed; the first scan after the period that still finds the problem reopens it. Duration: `14d` (default), `2w`, `3m`, `1y` |
-| `@leftsize ignore <reason>` | Closes as not planned, **permanently** for this rule and scope |
-| `@leftsize wrong <reason>` | Reports a false positive; closes as not planned, **permanently** (aliases `false-positive`, `fp`) |
+| `@leftsize ignore <reason>` | Closes as not planned, for good for this rule and scope (until a person reopens the issue) |
+| `@leftsize wrong <reason>` | Reports a false positive; closes as not planned, for good (aliases `false-positive`, `fp`) |
 | `@leftsize feedback <message>` | Records feedback; the issue stays open |
 
 Always give a reason with `ignore` and `wrong` — it is the record of why the team dismissed the finding:
