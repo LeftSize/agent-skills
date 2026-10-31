@@ -34,7 +34,7 @@ gh issue list --repo {owner}/{repo} --label leftsize --state open --limit 50
 | category | `cost-optimization`, `deprecation`, `security`, `governance` |
 | `cloud:` | `aws`, `azure`, `cloudflare` (GitHub matches labels case-insensitively) |
 | `severity:` | `critical`, `high`, `medium`, `low` |
-| `rule:` | the rule id, e.g. `rule:leftsize-unattached-disk` |
+| `rule:` | the rule id, e.g. `rule:leftsize-unattached-disk`; labels max 50 chars, so long ids drop `leftsize-` (`rule:cloudflare-worker-outdated-compatibility-date`) |
 | `resource-type:` | e.g. `resource-type:disk`, `resource-type:lambda` |
 
 Some rules add more, such as `action:upgrade-required` or `cleanup-candidate`. Filter on labels rather than reading every issue:
