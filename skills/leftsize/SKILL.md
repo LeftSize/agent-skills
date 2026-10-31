@@ -1,11 +1,11 @@
 ---
 name: leftsize
-description: Analyse and act on LeftSize cloud findings from the command line — list the open AWS and Azure findings, read affected resources and savings, ask LeftSize for explanations, fix steps and remediation scripts, and snooze, ignore or report false positives. Use when working with a repository that has LeftSize installed (a .github/workflows/leftsize.yml workflow, or issues labelled `leftsize` created by leftsize[bot]), or when the user mentions LeftSize, cloud waste, cloud cost findings, or idle and orphaned resources.
+description: Analyse and act on LeftSize cloud findings from the command line — list the open AWS, Azure and Cloudflare findings, read affected resources and savings, ask LeftSize for explanations, fix steps and remediation scripts, and snooze, ignore or report false positives. Use when working with a repository that has LeftSize installed (a .github/workflows/leftsize.yml workflow, or issues labelled `leftsize` created by leftsize[bot]), or when the user mentions LeftSize, cloud waste, cloud cost findings, or idle and orphaned resources.
 ---
 
 # LeftSize
 
-LeftSize is "Dependabot for cloud waste". A GitHub Action scans an AWS or Azure account with read-only access and LeftSize opens a GitHub issue for each finding: idle and orphaned resources, upcoming service retirements, and security and governance gaps. You ask for more detail, or manage a finding, by commenting `@leftsize <command>` on the issue; LeftSize answers with a comment.
+LeftSize is "Dependabot for cloud waste". A GitHub Action scans an AWS, Azure or Cloudflare account with read-only access and LeftSize opens a GitHub issue for each finding: idle and orphaned resources, upcoming service retirements, and security and governance gaps. You ask for more detail, or manage a finding, by commenting `@leftsize <command>` on the issue; LeftSize answers with a comment.
 
 There is no LeftSize API, CLI or MCP server for agents. Everything below is `gh` plus issue comments.
 
@@ -15,8 +15,8 @@ There is no LeftSize API, CLI or MCP server for agents. Everything below is `gh`
 2. **`snooze`, `ignore` and `wrong` close the issue immediately.** `ignore` and `wrong` stick for that rule and scope: LeftSize won't reopen the issue or open a new one for it, also not for resources that appear there later. Closing the issue with `gh issue close` has the same effect. Only reopening the issue (`gh issue reopen`) undoes it; LeftSize then tracks it again from the next scan. Confirm with the user before any of these unless they have explicitly told you to go ahead.
 3. **Commands must come from a person's account.** Comments from bot accounts (`github-actions[bot]`, any GitHub App) are silently ignored. Run these commands with the user's own `gh auth login`, not from a workflow token.
 4. **Replies are asynchronous.** Posting a command returns immediately; LeftSize's answer appears as a new comment from `leftsize[bot]`, usually within a few seconds. Wait briefly, then read the comments again. Editing a comment does not run it again — post a new one.
-5. **`script` without a type gives the CLI of the issue's cloud** (`aws-cli` on AWS, `azure-cli` on Azure). Not every rule has every type: the reply says which types it has and shows the default one.
-6. **LeftSize only reads.** It never changes infrastructure, and commands like `stop`, `delete` or `resize` are refused. Any change to cloud resources is made by you or the user, with the user's approval, through their own tools (az, aws, Terraform).
+5. **`script` without a type gives the CLI of the issue's cloud** (`aws-cli` on AWS, `azure-cli` on Azure). Cloudflare rules have one script each (Cloudflare API calls with `curl`, plus Terraform), whatever type you ask for. Not every rule has every type: the reply says which types it has and shows the default one.
+6. **LeftSize only reads.** It never changes infrastructure, and commands like `stop`, `delete` or `resize` are refused. Any change to cloud resources is made by you or the user, with the user's approval, through their own tools (az, aws, the Cloudflare dashboard or API, Terraform).
 
 ## Step 1: Find the findings
 
@@ -32,7 +32,7 @@ gh issue list --repo {owner}/{repo} --label leftsize --state open --limit 50
 |---|---|
 | `leftsize` | on every LeftSize issue |
 | category | `cost-optimization`, `deprecation`, `security`, `governance` |
-| `cloud:` | `aws`, `azure` (GitHub matches labels case-insensitively) |
+| `cloud:` | `aws`, `azure`, `cloudflare` (GitHub matches labels case-insensitively) |
 | `severity:` | `critical`, `high`, `medium`, `low` |
 | `rule:` | the rule id, e.g. `rule:leftsize-unattached-disk` |
 | `resource-type:` | e.g. `resource-type:disk`, `resource-type:lambda` |
@@ -70,7 +70,7 @@ gh search issues --owner {org} --label leftsize --state open --limit 100
 gh issue view {n} --repo {owner}/{repo} --comments
 ```
 
-One issue groups every resource that matches one rule in one **scope**: an Azure resource group (`azure:subscription/{id}/resourceGroup/{name}`) or an AWS account and region (`aws:account/{id}/region/{region}`). The body has:
+One issue groups every resource that matches one rule in one **scope**: an Azure resource group (`azure:subscription/{id}/resourceGroup/{name}`), an AWS account and region (`aws:account/{id}/region/{region}`), or a Cloudflare account (`cloudflare:account/{id}`; resources are `cloudflare:account/{id}/{kind}/{name}`, e.g. `.../zone/example.com`). The body has:
 
 - **Summary** — the rule id, the scope, and for cost rules the estimated monthly savings (list prices; no discounts, reservations or savings plans)
 - **Affected Resources** — each resource with its id or ARN and the details the rule used (size, SKU, version, environment)
