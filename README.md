@@ -12,7 +12,7 @@ Works with any agent that reads `SKILL.md`: Claude Code, Codex, Cursor, Copilot,
 
 | Skill | What it covers |
 |---|---|
-| [`leftsize`](skills/leftsize/SKILL.md) | List and analyse AWS and Azure findings, ask for fix steps and scripts, and snooze, ignore or report false positives — all through the GitHub CLI |
+| [`leftsize`](skills/leftsize/SKILL.md) | List and analyse AWS, Azure and Cloudflare findings, ask for fix steps and scripts, and snooze, ignore or report false positives — all through the GitHub CLI |
 
 ## Why there is no SDK, CLI or MCP server here
 
